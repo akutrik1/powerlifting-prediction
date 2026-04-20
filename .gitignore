@@ -1,0 +1,10 @@
+# Raw source data (large file, download separately from OpenPowerlifting)
+openpowerlifting-latest.csv
+
+# Jupyter artifacts
+.ipynb_checkpoints/
+__pycache__/
+
+# OS
+.DS_Store
+Thumbs.db

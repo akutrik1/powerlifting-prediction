@@ -1,62 +1,99 @@
-# Powerlifting Competition Total Prediction
+# Powerlifting Meet Total Predictor
+
+Can we predict a powerlifter's next competition total from their history?
+
+This project explores that question using data from over **835,000 meet results** sourced from [OpenPowerlifting](https://openpowerlifting.gitlab.io/opl-csv/) — one of the most comprehensive open-source records of competitive powerlifting worldwide.
+
+---
 
 ## The Question
 
-Can bodyweight and time between competitions reliably predict an athlete's future competition total? And if so, how much do these variables actually matter compared to other factors driving performance?
+> *Given a lifter's previous total, bodyweight, and the time between meets, how accurately can we predict their next competition total?*
 
 ---
 
-## Motivation
-
-Powerlifting competition results vary between meets, sometimes minimally, sometimes drastically. Understanding what drives those changes helps influence programming, competition planning, and competition time decisions. This project tests whether two simple, easy-to-measure variables (bodyweight and time between meets) carry predictive power, or whether competition performance is shaped by more complex factors.
-
----
-
-## Findings
-
-**Neither variable showed meaningful correlation with future competition totals.**
-
-Bodyweight and time between meets did not produce a reliable, significant regression model for predicting performance outcomes. MAE and RMSE indicated poor predictive accuracy, and residual analysis confirmed the model was not capturing the underlying patterns in the data.
-
-This is itself a meaningful result — it suggests that competition performance cannot be explained by these surface-level variables alone, and points toward more complex factors (training quality, peaking strategy, technical consistency, day-of conditions) as the real drivers of meet outcomes. This shows that choosing a weight class and or time to compete in a future meet should not be driving factors for athlete programming and coaching decisisons.
-
----
-
-## Methodology
-
-1. Collected historical powerlifting competition data
-2. Engineered features: bodyweight at time of meet, days elapsed since previous competition
-3. Built a baseline model and a linear regression model using scikit-learn
-4. Evaluated with MAE (Mean Absolute Error) and RMSE (Root Mean Squared Error)
-5. Visualized predictions vs. actuals and residual distributions to diagnose model behavior
-
----
-
-## Tools
-
-- Python
-- pandas
-- NumPy
-- scikit-learn
-- Matplotlib
-- Jupyter Notebook
-
----
-
-## Repository Structure
+## What's in This Repo
 
 ```
-powerlifting-prediction/
-│
-├── data/
-│   └── powerlifting_data.csv         # Historical meet data
-├── notebooks/
-│   └── powerlifting_prediction.ipynb # Full analysis notebook
+powerlifting-predictor/
+├── powerlifting_predictor.ipynb   # Full analysis notebook
+├── database_v1.csv                # Filtered & cleaned base dataset
+├── compared_data.csv              # Engineered feature dataset (model input)
 └── README.md
 ```
 
 ---
 
-## Key Takeaway
+## Methodology
 
-Knowing that bodyweight and inter-meet rest time don't reliably predict performance is useful information — it rules out a hypothesis and points toward more nuanced modeling approaches.
+### Data Pipeline
+
+Starting from the raw OpenPowerlifting dataset (~2M+ entries), the data was narrowed to a consistent, comparable population:
+
+- **Raw equipment only** — removes equipped lifters (single-ply, multi-ply) whose totals aren't directly comparable
+- **Full power (SBD)** — squat + bench + deadlift events only
+- **Valid total required** — excludes disqualifications and bomb-outs
+- **2+ meets per lifter** — required to compute meet-to-meet changes
+
+This produced **835,473 meet entries** across a multi-meet lifter population.
+
+### Feature Engineering
+
+For each consecutive pair of meets per lifter, the following features were derived:
+
+| Feature | Description |
+|---|---|
+| `PrevTotalKg` | Lifter's total at their previous meet |
+| `PrevBodyweightKg` | Lifter's bodyweight at their previous meet |
+| `DaysSinceLastMeet` | Days elapsed between the two meets (capped at 1–1,000) |
+| `CurrTotalKg` | Target — the actual total at the current meet |
+
+Final comparison dataset: **356,955 meet transitions**
+
+### Models
+
+| Model | MAE | RMSE |
+|---|---|---|
+| Baseline (average change) | 22.79 kg | 42.65 kg |
+| Linear Regression | 23.08 kg | 41.85 kg |
+
+---
+
+## Key Finding
+
+Linear regression offers only a marginal improvement over the naive baseline. Inspecting the coefficients reveals why:
+
+| Feature | Coefficient |
+|---|---|
+| Previous Total (kg) | 0.9617 |
+| Previous Bodyweight (kg) | 0.0967 |
+| Days Since Last Meet | 0.0122 |
+
+**Previous total dominates almost entirely.** This makes the model a reasonable forecasting tool — but it means bodyweight fluctuation and rest time contribute very little to predicting the *absolute* total.
+
+This finding reframed the original question: rather than predicting the total itself, the more meaningful target may be the *change* in total — and whether bodyweight fluctuation + time between meets can explain that delta. That follow-up is the next phase of this project.
+
+---
+
+## Tools
+
+- Python 3
+- pandas
+- NumPy
+- scikit-learn
+- Matplotlib
+
+---
+
+## Data Source
+
+[OpenPowerlifting](https://openpowerlifting.gitlab.io/opl-csv/) — Public domain dataset, updated regularly. Download the latest CSV and place it in the project directory as `openpowerlifting-latest.csv` to reproduce the full pipeline from scratch.
+
+---
+
+## Limitations
+
+- Lifters sharing the same name may be incorrectly grouped
+- Weight class changes between meets are not accounted for
+- Unobserved factors (injury, programming, coaching) introduce irreducible noise
+- Male and female lifters are pooled — splitting by sex would likely improve accuracy
